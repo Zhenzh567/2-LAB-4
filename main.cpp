@@ -108,40 +108,47 @@ private slots:
 
 private:
     bool validateForm() {
-        // Проверка русского названия
-        if (!QRegularExpression(R"(^[А-Яа-яёЁ]([а-яё]*)?(\s[А-Яа-яёЁ][а-яё]*)*$)").match(nameRusEdit->text()).hasMatch()) {
-            showError("Название (Р)");
+        // Проверка русского названия: заглавная первая буква, далее строчные, слова через пробел
+        if (!QRegularExpression(R"(^[А-ЯЁ][а-яё]*(\s[А-ЯЁ][а-яё]*)*$)").match(nameRusEdit->text()).hasMatch()) {
+            showError("Название (Р): каждое слово должно начинаться с заглавной буквы");
             return false;
         }
-        // Проверка английского названия
-        if (!QRegularExpression(R"(^[A-Za-z]([a-z]*)?(\s[A-Za-z][a-z]*)*$)").match(nameEngEdit->text()).hasMatch()) {
-            showError("Название (Л)");
+
+        // Проверка английского названия: аналогично русскому, но латиница
+        if (!QRegularExpression(R"(^[A-Z][a-z]*(\s[A-Z][a-z]*)*$)").match(nameEngEdit->text()).hasMatch()) {
+            showError("Название (Л): каждое слово должно начинаться с заглавной буквы");
             return false;
         }
-        // Проверка веса
-        if (!QRegularExpression(R"(^\d+\.\d+$)").match(weightEdit->text()).hasMatch()) {
-            showError("Вес");
+
+        // Проверка веса: дробное число, 1–3 знака после точки
+        if (!QRegularExpression(R"(^\d+\.\d{1,3}$)").match(weightEdit->text()).hasMatch()) {
+            showError("Вес: введите дробное число (например, 0.15)");
             return false;
         }
-        // Проверка размаха крыльев
-        QRegularExpression regex(R"(^(\d+)-(\d+)$)");
+
+        // Проверка размаха крыльев: два числа через дефис, первое меньше второго
+        QRegularExpression regex(R"(^(\d{1,3})-(\d{1,3})$)");
         QRegularExpressionMatch match = regex.match(wingspanEdit->text());
         if (!match.hasMatch()) {
-            showError("Размах крыльев");
+            showError("Размах крыльев: формат «min-max» (например, 120-160)");
             return false;
         }
         int min = match.captured(1).toInt();
         int max = match.captured(2).toInt();
         if (min >= max) {
-            showError("Размах крыльев (первое число должно быть меньше второго)");
+            showError("Размах крыльев: первое число должно быть меньше второго");
             return false;
         }
+        if (min <= 0 || max > 500) {
+            showError("Размах крыльев: значения должны быть в диапазоне 1–500 см");
+            return false;
+        }
+
         return true;
     }
 
-    void showError(const QString& fieldName) {
-        QMessageBox::warning(this, "Ошибка ввода",
-                          QString("Некорректный формат в поле: %1").arg(fieldName));
+    void showError(const QString& message) {
+        QMessageBox::warning(this, "Ошибка ввода", message);
     }
 
     QLineEdit *nameRusEdit;
