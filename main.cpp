@@ -108,6 +108,24 @@ private slots:
 
 private:
     bool validateForm() {
+        // Проверка на непустоту обязательных полей
+        if (nameRusEdit->text().isEmpty()) {
+            showError("Название (Р): поле обязательно для заполнения");
+            return false;
+        }
+        if (weightEdit->text().isEmpty()) {
+            showError("Вес: поле обязательно для заполнения");
+            return false;
+        }
+        if (wingspanEdit->text().isEmpty()) {
+            showError("Размах крыльев: поле обязательно для заполнения");
+            return false;
+        }
+        if (canFlyCombo->currentText().isEmpty()) {
+            showError("Может летать: поле обязательно для заполнения");
+            return false;
+        }
+
         // Проверка русского названия: заглавная первая буква, далее строчные, слова через пробел
         if (!QRegularExpression(R"(^[А-ЯЁ][а-яё]*(\s[А-ЯЁ][а-яё]*)*$)").match(nameRusEdit->text()).hasMatch()) {
             showError("Название (Р): каждое слово должно начинаться с заглавной буквы");
@@ -115,8 +133,10 @@ private:
         }
 
         // Проверка английского названия: аналогично русскому, но латиница
-        if (!QRegularExpression(R"(^[A-Z][a-z]*(\s[A-Z][a-z]*)*$)").match(nameEngEdit->text()).hasMatch()) {
-            showError("Название (Л): каждое слово должно начинаться с заглавной буквы");
+        // Поле не обязательное, но если заполнено — проверяем формат
+        if (!nameEngEdit->text().isEmpty() &&
+            !QRegularExpression(R"(^[A-Z][a-z]*(\s[A-Z][a-z]*)*$)").match(nameEngEdit->text()).hasMatch()) {
+            showError("Название (Л): если заполнено, каждое слово должно начинаться с заглавной буквы");
             return false;
         }
 
