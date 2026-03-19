@@ -29,10 +29,10 @@ public:
         rusNameEdit = new QLineEdit();
         engNameEdit = new QLineEdit();
         weightEdit = new QLineEdit();
-        wingspanEdit = new QLineEdit();  // Размах крыльев (раньше было range)
+        wingspanEdit = new QLineEdit();  // Размах крыльев
         
         formLayout->addRow("Русское название (только первая буква заглавная):", rusNameEdit);
-        formLayout->addRow("Английское название (только первая буква заглавная):", engNameEdit);
+        formLayout->addRow("Английское название (необязательно, но если есть - первая буква заглавная):", engNameEdit);
         formLayout->addRow("Вес (дробное число с точкой, например 0.150):", weightEdit);
         formLayout->addRow("Размах крыльев (120-160, первое меньше второго):", wingspanEdit);
         
@@ -52,7 +52,7 @@ public:
         mainLayout->addWidget(flyGroup);
         
         // Группа "Особенности" с чекбоксами
-        QGroupBox *featuresGroup = new QGroupBox("Особенности:");
+        QGroupBox *featuresGroup = new QGroupBox("Особенности (можно выбрать несколько):");
         QVBoxLayout *featuresLayout = new QVBoxLayout();
         
         feature1 = new QCheckBox("Перелетные");
@@ -84,7 +84,7 @@ public:
         onResetClicked();
         
         setWindowTitle("Лабораторная работа 4 - Вариант 5");
-        setFixedSize(500, 400);
+        setFixedSize(550, 450);
     }
 
 private slots:
@@ -93,11 +93,6 @@ private slots:
         // Проверка обязательных полей
         if (rusNameEdit->text().isEmpty()) {
             QMessageBox::warning(this, "Ошибка", "Поле 'Русское название' обязательно");
-            return;
-        }
-        
-        if (engNameEdit->text().isEmpty()) {
-            QMessageBox::warning(this, "Ошибка", "Поле 'Английское название' обязательно");
             return;
         }
         
@@ -120,13 +115,15 @@ private slots:
             return;
         }
         
-        // Проверка английского названия (первая буква заглавная)
-        QString engText = engNameEdit->text();
-        QRegularExpression engRegex("^[A-Z][a-z]*$");
-        if (!engRegex.match(engText).hasMatch()) {
-            QMessageBox::warning(this, "Ошибка", 
-                "Английское название должно начинаться с заглавной буквы и содержать только английские буквы");
-            return;
+        // Проверка английского названия (только если поле не пустое)
+        if (!engNameEdit->text().isEmpty()) {
+            QString engText = engNameEdit->text();
+            QRegularExpression engRegex("^[A-Z][a-z]*$");
+            if (!engRegex.match(engText).hasMatch()) {
+                QMessageBox::warning(this, "Ошибка", 
+                    "Английское название должно начинаться с заглавной буквы и содержать только английские буквы");
+                return;
+            }
         }
         
         // Проверка веса (дробное число с точкой)
@@ -164,14 +161,21 @@ private slots:
         if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
             QTextStream out(&file);
             out << "Русское название: " << rusNameEdit->text() << "\n";
-            out << "Английское название: " << engNameEdit->text() << "\n";
+            
+            // Английское название сохраняем только если оно есть
+            if (!engNameEdit->text().isEmpty()) {
+                out << "Английское название: " << engNameEdit->text() << "\n";
+            } else {
+                out << "Английское название: (не указано)\n";
+            }
+            
             out << "Вес: " << weightEdit->text() << "\n";
             out << "Размах крыльев: " << wingspanEdit->text() << "\n";
             
             // Возможность летать
             out << "Возможность летать: " << (flyYes->isChecked() ? "Да" : "Нет") << "\n";
             
-            // Сохраняем особенности
+            // Сохраняем особенности (только выбранные)
             QStringList features;
             if (feature1->isChecked()) features << "Перелетные";
             if (feature2->isChecked()) features << "Водоплавающие";
