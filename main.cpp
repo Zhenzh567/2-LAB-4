@@ -1,189 +1,190 @@
-#include <QApplication>
-#include <QMainWindow>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QLabel>
-#include <QLineEdit>
-#include <QComboBox>
-#include <QPushButton>
-#include <QMessageBox>
-#include <QRegularExpression>
-#include <QFile>
-#include <QTextStream>
+#include "MainWindow.h"
 
-class MainWindow : public QMainWindow {
-    Q_OBJECT
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent)
+{
+    setupUI();
+    setupValidators();
+    onResetClicked();
+}
 
-public:
-    MainWindow(QWidget *parent = nullptr) : QMainWindow(parent) {
-        setWindowTitle("Вариант 5 — Птицы");
-        resize(400, 300);
+MainWindow::~MainWindow()
+{
+}
 
-        // Создаём центральный виджет и макет
-        QWidget *centralWidget = new QWidget(this);
-        QVBoxLayout *layout = new QVBoxLayout(centralWidget);
+void MainWindow::setupUI()
+{
+    QWidget *centralWidget = new QWidget(this);
+    setCentralWidget(centralWidget);
+    
+    QVBoxLayout *mainLayout = new QVBoxLayout(centralWidget);
+    
+    // Создаем форму
+    QFormLayout *formLayout = new QFormLayout();
+    
+    rusNameEdit = new QLineEdit();
+    engNameEdit = new QLineEdit();
+    numberEdit = new QLineEdit();
+    rangeEdit = new QLineEdit();
+    featuresEdit = new QLineEdit();
+    latinNameEdit = new QLineEdit();
+    
+    formLayout->addRow("Русское название (только первая буква капсом):", rusNameEdit);
+    formLayout->addRow("Английское название (только первая буква капсом):", engNameEdit);
+    formLayout->addRow("Число (дробное с точкой, например 0.150):", numberEdit);
+    formLayout->addRow("Диапазон (120-160, первое меньше второго):", rangeEdit);
+    formLayout->addRow("Особенности (необязательно):", featuresEdit);
+    formLayout->addRow("Латинское название (необязательно):", latinNameEdit);
+    
+    mainLayout->addLayout(formLayout);
+    
+    // Кнопки
+    QHBoxLayout *buttonLayout = new QHBoxLayout();
+    saveButton = new QPushButton("Сохранить");
+    resetButton = new QPushButton("Сброс");
+    
+    buttonLayout->addWidget(saveButton);
+    buttonLayout->addWidget(resetButton);
+    
+    mainLayout->addLayout(buttonLayout);
+    
+    // Подключаем сигналы
+    connect(saveButton, &QPushButton::clicked, this, &MainWindow::onSaveClicked);
+    connect(resetButton, &QPushButton::clicked, this, &MainWindow::onResetClicked);
+    
+    setWindowTitle("Лабораторная работа 4 - Вариант 5");
+    setFixedSize(450, 300);
+}
 
-        // Поле 1: Название (Р)
-        layout->addWidget(new QLabel("Название (Р):"));
-        nameRusEdit = new QLineEdit;
-        layout->addWidget(nameRusEdit);
+void MainWindow::setupValidators()
+{
+    // 1. Русский текст: только первая буква заглавная
+    QRegularExpression rusRegex("^[А-Я][а-я]*$");
+    rusNameValidator = new QRegularExpressionValidator(rusRegex, this);
+    rusNameEdit->setValidator(rusNameValidator);
+    
+    // 2. Английский текст: только первая буква заглавная
+    QRegularExpression engRegex("^[A-Z][a-z]*$");
+    engNameValidator = new QRegularExpressionValidator(engRegex, this);
+    engNameEdit->setValidator(engNameValidator);
+    
+    // 3. Дробное число с точкой (любое количество знаков после запятой)
+    QRegularExpression numberRegex("^\\d+\\.\\d+$");
+    numberValidator = new QRegularExpressionValidator(numberRegex, this);
+    numberEdit->setValidator(numberValidator);
+    
+    // 4. Диапазон (120-160, первое меньше второго)
+    QRegularExpression rangeRegex("^\\d{1,3}-\\d{1,3}$");
+    rangeValidator = new QRegularExpressionValidator(rangeRegex, this);
+    rangeEdit->setValidator(rangeValidator);
+}
 
-        // Поле 2: Название (Л)
-        layout->addWidget(new QLabel("Название (Л):"));
-        nameEngEdit = new QLineEdit;
-        layout->addWidget(nameEngEdit);
-
-        // Поле 3: Вес
-        layout->addWidget(new QLabel("Вес:"));
-        weightEdit = new QLineEdit;
-        layout->addWidget(weightEdit);
-
-        // Поле 4: Размах крыльев
-        layout->addWidget(new QLabel("Размах крыльев:"));
-        wingspanEdit = new QLineEdit;
-        layout->addWidget(wingspanEdit);
-
-        // Поле 5: Может летать
-        layout->addWidget(new QLabel("Может летать:"));
-        canFlyCombo = new QComboBox;
-        canFlyCombo->addItems({"да", "нет"});
-        layout->addWidget(canFlyCombo);
-
-        // Поле 6: Особенности
-        layout->addWidget(new QLabel("Особенности:"));
-        featuresCombo = new QComboBox;
-        featuresCombo->addItems({"перелётные", "водоплавающие", "домашние"});
-        layout->addWidget(featuresCombo);
-
-        // Кнопки
-        QHBoxLayout *buttonLayout = new QHBoxLayout;
-        QPushButton *saveButton = new QPushButton("Сохранить");
-        QPushButton *resetButton = new QPushButton("Сброс");
-        buttonLayout->addWidget(saveButton);
-        buttonLayout->addWidget(resetButton);
-        layout->addLayout(buttonLayout);
-
-        setCentralWidget(centralWidget);
-
-        // Подключаем сигналы
-        connect(saveButton, &QPushButton::clicked, this, &MainWindow::onSave);
-        connect(resetButton, &QPushButton::clicked, this, &MainWindow::onReset);
+bool MainWindow::validateFields()
+{
+    // Проверка обязательных полей
+    if (rusNameEdit->text().isEmpty()) {
+        showError("Поле 'Русское название' обязательно для заполнения");
+        return false;
     }
-
-private slots:
-    void onSave() {
-        if (!validateForm()) return;
-
-        // Собираем данные
-        QString data =
-            "Название (Р): " + nameRusEdit->text() + "\n" +
-            "Название (Л): " + nameEngEdit->text() + "\n" +
-            "Вес: " + weightEdit->text() + "\n" +
-            "Размах крыльев: " + wingspanEdit->text() + "\n" +
-            "Может летать: " + canFlyCombo->currentText() + "\n" +
-            "Особенности: " + featuresCombo->currentText() + "\n" +
-            "--------------------\n";
-
-        // Сохраняем в файл
-        QFile file("result.txt");
-        if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
-            QTextStream out(&file);
-            out << data;
-            file.close();
-            QMessageBox::information(this, "Успех", "Данные сохранены!");
-            onReset();
-        } else {
-            QMessageBox::critical(this, "Ошибка", "Не удалось сохранить файл!");
+    
+    if (engNameEdit->text().isEmpty()) {
+        showError("Поле 'Английское название' обязательно для заполнения");
+        return false;
+    }
+    
+    if (numberEdit->text().isEmpty()) {
+        showError("Поле 'Число' обязательно для заполнения");
+        return false;
+    }
+    
+    if (rangeEdit->text().isEmpty()) {
+        showError("Поле 'Диапазон' обязательно для заполнения");
+        return false;
+    }
+    
+    // Проверка соответствия регулярным выражениям
+    int pos = 0;
+    QString text;
+    
+    text = rusNameEdit->text();
+    if (rusNameValidator->validate(text, pos) != QValidator::Acceptable) {
+        showError("Поле 'Русское название' должно содержать только русские буквы, первая заглавная");
+        return false;
+    }
+    
+    text = engNameEdit->text();
+    if (engNameValidator->validate(text, pos) != QValidator::Acceptable) {
+        showError("Поле 'Английское название' должно содержать только английские буквы, первая заглавная");
+        return false;
+    }
+    
+    text = numberEdit->text();
+    if (numberValidator->validate(text, pos) != QValidator::Acceptable) {
+        showError("Поле 'Число' должно быть дробным числом с точкой (например: 0.1, 3.14, 0.150)");
+        return false;
+    }
+    
+    text = rangeEdit->text();
+    if (rangeValidator->validate(text, pos) != QValidator::Acceptable) {
+        showError("Поле 'Диапазон' должно быть в формате: число-число (например, 120-160)");
+        return false;
+    }
+    
+    // Дополнительная проверка: первое число меньше второго
+    QStringList rangeParts = rangeEdit->text().split('-');
+    if (rangeParts.size() == 2) {
+        int first = rangeParts[0].toInt();
+        int second = rangeParts[1].toInt();
+        if (first >= second) {
+            showError("В поле 'Диапазон' первое число должно быть меньше второго");
+            return false;
         }
     }
+    
+    return true;
+}
 
-    void onReset() {
-        nameRusEdit->clear();
-        nameEngEdit->clear();
-        weightEdit->clear();
-        wingspanEdit->clear();
-        canFlyCombo->setCurrentIndex(0);
-        featuresCombo->setCurrentIndex(0);
+void MainWindow::showError(const QString &message)
+{
+    QMessageBox::warning(this, "Ошибка ввода", message);
+}
+
+void MainWindow::onSaveClicked()
+{
+    if (!validateFields()) {
+        return;
     }
+    
+    PersonData data(
+        rusNameEdit->text(),
+        engNameEdit->text(),
+        numberEdit->text().toDouble(),
+        rangeEdit->text(),
+        featuresEdit->text(),
+        latinNameEdit->text()
+    );
+    
+    saveToFile(data);
+    
+    QMessageBox::information(this, "Успех", "Данные успешно сохранены в файл result.txt");
+}
 
-private:
-    bool validateForm() {
-        // Проверка на непустоту обязательных полей
-        if (nameRusEdit->text().isEmpty()) {
-            showError("Название (Р): поле обязательно для заполнения");
-            return false;
-        }
-        if (weightEdit->text().isEmpty()) {
-            showError("Вес: поле обязательно для заполнения");
-            return false;
-        }
-        if (wingspanEdit->text().isEmpty()) {
-            showError("Размах крыльев: поле обязательно для заполнения");
-            return false;
-        }
-        if (canFlyCombo->currentText().isEmpty()) {
-            showError("Может летать: поле обязательно для заполнения");
-            return false;
-        }
+void MainWindow::onResetClicked()
+{
+    rusNameEdit->clear();
+    engNameEdit->clear();
+    numberEdit->clear();
+    rangeEdit->clear();
+    featuresEdit->clear();
+    latinNameEdit->clear();
+}
 
-        // Проверка русского названия: заглавная первая буква, далее строчные, слова через пробел
-        if (!QRegularExpression(R"(^[А-ЯЁ][а-яё]*(\s[А-ЯЁ][а-яё]*)*$)").match(nameRusEdit->text()).hasMatch()) {
-            showError("Название (Р): каждое слово должно начинаться с заглавной буквы");
-            return false;
-        }
-
-        // Проверка английского названия: аналогично русскому, но латиница
-        // Поле не обязательное, но если заполнено — проверяем формат
-        if (!nameEngEdit->text().isEmpty() &&
-            !QRegularExpression(R"(^[A-Z][a-z]*(\s[A-Z][a-z]*)*$)").match(nameEngEdit->text()).hasMatch()) {
-            showError("Название (Л): если заполнено, каждое слово должно начинаться с заглавной буквы");
-            return false;
-        }
-
-        // Проверка веса: дробное число, 1–3 знака после точки
-        if (!QRegularExpression(R"(^\d+\.\d{1,3}$)").match(weightEdit->text()).hasMatch()) {
-            showError("Вес: введите дробное число (например, 0.15)");
-            return false;
-        }
-
-        // Проверка размаха крыльев: два числа через дефис, первое меньше второго
-        QRegularExpression regex(R"(^(\d{1,3})-(\d{1,3})$)");
-        QRegularExpressionMatch match = regex.match(wingspanEdit->text());
-        if (!match.hasMatch()) {
-            showError("Размах крыльев: формат «min-max» (например, 120-160)");
-            return false;
-        }
-        int min = match.captured(1).toInt();
-        int max = match.captured(2).toInt();
-        if (min >= max) {
-            showError("Размах крыльев: первое число должно быть меньше второго");
-            return false;
-        }
-        if (min <= 0 || max > 500) {
-            showError("Размах крыльев: значения должны быть в диапазоне 1–500 см");
-            return false;
-        }
-
-        return true;
+void MainWindow::saveToFile(const PersonData &data)
+{
+    QFile file("result.txt");
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
+        QTextStream out(&file);
+        out << data.toString() << "\n";
+        file.close();
     }
-
-    void showError(const QString& message) {
-        QMessageBox::warning(this, "Ошибка ввода", message);
-    }
-
-    QLineEdit *nameRusEdit;
-    QLineEdit *nameEngEdit;
-    QLineEdit *weightEdit;
-    QLineEdit *wingspanEdit;
-    QComboBox *canFlyCombo;
-    QComboBox *featuresCombo;
-};
-
-int main(int argc, char *argv[]) {
-    QApplication app(argc, argv);
-
-    MainWindow window;
-    window.show();
-
-    return app.exec();
 }
