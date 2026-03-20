@@ -12,6 +12,7 @@
 #include <QCheckBox>
 #include <QGroupBox>
 #include <QRadioButton>
+#include <QButtonGroup>
 #include <QFile>
 #include <QTextStream>
 
@@ -59,19 +60,37 @@ public:
         QHBoxLayout *optionsLayout = new QHBoxLayout();
 
         // Возможность летать (да/нет)
-        QGroupBox *flyGroup = new QGroupBox("Возможность летать:");
+        QGroupBox *flyGroupBox = new QGroupBox("Возможность летать:");
         QHBoxLayout *flyLayout = new QHBoxLayout();
 
         flyYes = new QRadioButton("Да");
         flyNo = new QRadioButton("Нет");
 
+        // Создаем группу для радиокнопок
+        flyGroup = new QButtonGroup(this);
+        flyGroup->addButton(flyYes);
+        flyGroup->addButton(flyNo);
+
         // Убираем галочку изначально
         flyYes->setChecked(false);
         flyNo->setChecked(false);
 
+        // Добавляем возможность снимать галочку
+        connect(flyYes, &QRadioButton::clicked, [this]() {
+            if (flyYes->isChecked()) {
+                flyYes->setChecked(false);
+            }
+        });
+
+        connect(flyNo, &QRadioButton::clicked, [this]() {
+            if (flyNo->isChecked()) {
+                flyNo->setChecked(false);
+            }
+        });
+
         flyLayout->addWidget(flyYes);
         flyLayout->addWidget(flyNo);
-        flyGroup->setLayout(flyLayout);
+        flyGroupBox->setLayout(flyLayout);
 
         // Группа "Особенности" с чекбоксами
         QGroupBox *featuresGroup = new QGroupBox("Особенности:");
@@ -87,7 +106,7 @@ public:
 
         featuresGroup->setLayout(featuresLayout);
 
-        optionsLayout->addWidget(flyGroup);
+        optionsLayout->addWidget(flyGroupBox);
         optionsLayout->addWidget(featuresGroup);
 
         mainLayout->addLayout(optionsLayout);
@@ -253,6 +272,7 @@ private:
 
     QRadioButton *flyYes;
     QRadioButton *flyNo;
+    QButtonGroup *flyGroup;  // Группа для радиокнопок
 
     QCheckBox *feature1;  // Перелетные
     QCheckBox *feature2;  // Водоплавающие
